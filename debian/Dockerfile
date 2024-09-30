@@ -1,6 +1,6 @@
 ARG DISTRO=debian
 ARG SUITE=trixie
-ARG BASE_IMAGE=${DISTRO}:${SUITE}-slim
+ARG BASE_IMAGE=ghcr.io/loong64/${DISTRO}:${SUITE}-slim
 
 FROM ${BASE_IMAGE} AS builder
 
@@ -29,21 +29,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR /opt/build
 
 RUN set -ex \
-    && git clone https://github.com/loong64/live-build.git --depth 1 \
-    && mk-build-deps -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y" -i live-build/debian/control \
-    && cd live-build \
-    && dpkg-buildpackage -uc -us
+    && git clone https://github.com/loong64/live-build.git --depth 1
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    set -ex \
-    && apt update \
-    && apt install -y ./live-build_*.deb
+    apt-get update \
+    && cd live-build \
+    && mk-build-deps -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y" -i debian/control \
+    && dpkg-buildpackage -uc -us \
+    && apt install -y ../live-build_*.deb
 
 WORKDIR /opt/live
 
-RUN set -ex \
-    && lb config --distribution sid \
+RUN lb config --distribution sid \
         --binary-image iso \
         --apt-secure false \
         --bootloaders grub-efi \
@@ -58,16 +56,19 @@ RUN set -ex \
 COPY config/ config/
 
 RUN set -ex \
-    && lb build
+    && mkdir -p config/bootloaders \
+    && wget --quiet https://salsa.debian.org/installer-team/debian-installer/-/raw/master/build/boot/artwork/12-emerald/emerald.svg -O config/bootloaders/splash.svg
+
+RUN lb build
 
 FROM ${BASE_IMAGE}
 ARG TARGETARCH
 
 WORKDIR /opt/dist
 
-COPY --from=builder /opt/build/live-build_*.deb .
-COPY --from=builder /opt/live/debian-testing-*.iso .
+COPY --from=builder /opt/build/*.deb ./
+COPY --from=builder /opt/live/*.iso ./
 
 VOLUME /dist
 
-CMD cp -rf dist/* /dist/
+CMD cp -rf /opt/dist/* /dist/

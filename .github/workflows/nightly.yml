@@ -1,4 +1,4 @@
-name: build
+name: Builder for live images based on Debian
 
 on:
   workflow_dispatch:
@@ -64,7 +64,7 @@ jobs:
             DISTRO=${{ matrix.DISTRO }}
             SUITE=${{ matrix.SUITE }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.DISTRO }}-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
+            ghcr.io/${{ github.repository_owner }}/live-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upgrade Release
         run: |
-          docker run --rm --platform linux/loong64 -v $(pwd)/dist:/dist ghcr.io/${{ github.repository_owner }}/${{ matrix.DISTRO }}-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
+          docker run --rm --platform linux/loong64 -v $(pwd)/dist:/dist ghcr.io/${{ github.repository_owner }}/live-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
           ls -al dist
           gh release upload ${{ env.VERSION }} -R ${{ github.repository }} dist/*
         env:
