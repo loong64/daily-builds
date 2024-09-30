@@ -1,0 +1,2 @@
+deb-src http://deb.debian.org/debian sid main non-free-firmware
+# deb-src http://deb.debian.org/debian experimental main non-free-firmware

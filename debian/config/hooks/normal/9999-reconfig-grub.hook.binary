@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+# Fix loong64 grub
+mkdir -p boot/grub/fonts
+cp -f boot/grub/unicode.pf2 boot/grub/fonts/unicode.pf2
+
+sed -i 's/insmod efi_uga/#insmod efi_uga/g' boot/grub/config.cfg
+sed -i 's/insmod video_bochs/#insmod video_bochs/g' boot/grub/config.cfg
+sed -i 's/insmod video_cirrus/#insmod video_cirrus/g' boot/grub/config.cfg

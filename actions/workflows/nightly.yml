@@ -1,0 +1,100 @@
+name: build
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        DISTRO: [ 'debian' ]
+        SUITE: [ 'trixie' ]
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Setup qemu-user-static
+        run: docker run --rm --privileged ghcr.io/loong64/qemu-user-static --reset -p yes
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ matrix.DISTRO }}-${{ matrix.SUITE }}-${{ matrix.VERSION }}-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.DISTRO }}-${{ matrix.SUITE }}-${{ matrix.VERSION }}-
+
+      - name: Check Version
+        run: |
+          echo "Checking version..."
+          VERSION=$(date "+%Y%m%d")
+
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Current version: ${VERSION}"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.DISTRO }}
+          file: ${{ matrix.DISTRO }}/Dockerfile
+          platforms: linux/loong64
+          push: true
+          build-args: |
+            DISTRO=${{ matrix.DISTRO }}
+            SUITE=${{ matrix.SUITE }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.DISTRO }}-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Create Tag
+        run: |
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add .
+          git commit -m "Release ${{ env.VERSION }}" || true
+          git tag ${{ env.VERSION }}
+          git push origin ${{ env.VERSION }}  || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        run: |
+          gh release create ${{ env.VERSION }} -R ${{ github.repository }} --title ${{ env.VERSION }} || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upgrade Release
+        run: |
+          docker run --rm --platform linux/loong64 -v $(pwd)/dist:/dist ghcr.io/${{ github.repository_owner }}/${{ matrix.DISTRO }}-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
+          ls -al dist
+          gh release upload ${{ env.VERSION }} -R ${{ github.repository }} dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
