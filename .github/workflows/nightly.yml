@@ -3,7 +3,7 @@ name: Builder for live images based on Debian
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: '9 0 * * *'
 
 jobs:
   build:
