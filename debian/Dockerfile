@@ -39,6 +39,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && dpkg-buildpackage -uc -us \
     && apt install -y ../live-build_*.deb
 
+ARG VERSION
+
 WORKDIR /opt/live
 
 RUN lb config --distribution sid \
@@ -48,7 +50,7 @@ RUN lb config --distribution sid \
         --debian-installer cdrom \
         --uefi-secure-boot disable \
         --debian-installer-distribution git \
-        --image-name debian-testing-$(date +%Y%m%d) \
+        --image-name debian-testing-${VERSION} \
         --keyring-packages debian-ports-archive-keyring \
         --mirror-binary http://deb.debian.org/debian-ports \
         --mirror-bootstrap http://deb.debian.org/debian-ports
