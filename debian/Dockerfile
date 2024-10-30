@@ -53,7 +53,8 @@ RUN lb config --distribution sid \
         --image-name debian-testing-${VERSION} \
         --keyring-packages debian-ports-archive-keyring \
         --mirror-binary http://deb.debian.org/debian-ports \
-        --mirror-bootstrap http://deb.debian.org/debian-ports
+        --mirror-bootstrap http://deb.debian.org/debian-ports \
+        --debootstrap-options "--include=debian-archive-keyring,ca-certificates" \
 
 COPY config/ config/
 
