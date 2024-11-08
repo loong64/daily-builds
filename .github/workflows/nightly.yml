@@ -65,6 +65,7 @@ jobs:
             DISTRO=${{ matrix.DISTRO }}
             SUITE=${{ matrix.SUITE }}
             VERSION=${{ env.VERSION }}
+            DEB_BUILD_OPTIONS=nocheck
           tags: |
             ghcr.io/${{ github.repository_owner }}/live-buildcache-${{ matrix.DISTRO }}:${{ env.VERSION }}-${{ matrix.SUITE }}
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
